@@ -8,6 +8,7 @@ class ProcessMonitor:
         self.detector = detector
         self.events_buffer = events_buffer
         self.processes = []
+        self.injected_processes = {}
         self.lock = threading.Lock()
         self.running = True
         
@@ -45,17 +46,20 @@ class ProcessMonitor:
                         "memory_usage": mem_usage,
                         "memory_percent": info['memory_percent'],
                         "status": info['status'],
-                        "username": "N/A" # Omitted to prevent blocking delays
+                        "username": "N/A", # Omitted to prevent blocking delays
+                        "is_simulated": False
                     })
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     continue
             
             with self.lock:
-                self.processes = processes
+                # Add any injected simulated processes
+                combined_processes = processes + list(self.injected_processes.values())
+                self.processes = combined_processes
                 
             # Perform detection in the background thread exactly every 2 seconds
             if self.detector and self.events_buffer is not None:
-                new_events = self.detector.analyze_processes(processes, total_system_memory=None)
+                new_events = self.detector.analyze_processes(combined_processes, total_system_memory=None)
                 if new_events:
                     for e in new_events:
                         e['timestamp'] = time.time()
@@ -69,3 +73,12 @@ class ProcessMonitor:
     def get_processes(self):
         with self.lock:
             return list(self.processes)
+
+    def inject_process(self, process_dict):
+        with self.lock:
+            self.injected_processes[process_dict['pid']] = process_dict
+
+    def remove_injected_process(self, pid):
+        with self.lock:
+            if pid in self.injected_processes:
+                del self.injected_processes[pid]

@@ -8,32 +8,35 @@ class ProcessDetector:
         
         # Track historical data: pid -> {"high_cpu_count": 0, "high_mem_count": 0, "last_alerted": False}
         self.process_history = {}
+        self.simulation_history = {}
         
-    def analyze_processes(self, processes, total_system_memory=None):
+    def analyze_processes(self, processes, total_system_memory=None, is_simulation=False):
         events = []
         current_pids = set()
+        
+        history_dict = self.simulation_history if is_simulation else self.process_history
         
         for p in processes:
             pid = p["pid"]
             current_pids.add(pid)
             
-            if pid not in self.process_history:
-                self.process_history[pid] = {
+            if pid not in history_dict:
+                history_dict[pid] = {
                     "high_cpu_count": 0, 
                     "high_mem_count": 0,
                     "last_alerted": False
                 }
                 
-            history = self.process_history[pid]
+            history = history_dict[pid]
             
             # Check CPU
-            if p["cpu_percent"] is not None and p["cpu_percent"] > self.cpu_threshold:
+            if p.get("cpu_percent") is not None and p["cpu_percent"] > self.cpu_threshold:
                 history["high_cpu_count"] += 1
             else:
                 history["high_cpu_count"] = 0
                 
             # Check Memory
-            if p["memory_percent"] is not None and p["memory_percent"] > self.mem_threshold:
+            if p.get("memory_percent") is not None and p["memory_percent"] > self.mem_threshold:
                 history["high_mem_count"] += 1
             else:
                 history["high_mem_count"] = 0
@@ -58,15 +61,16 @@ class ProcessDetector:
                         "memory_percent": p["memory_percent"],
                         "score": score,
                         "severity": severity,
-                        "description": f"Potential anomaly detected: Sustained high resource usage for {p['name']}."
+                        "description": f"Potential anomaly detected: Sustained high resource usage for {p['name']}.",
+                        "is_simulated": p.get("is_simulated", False) or is_simulation
                     })
                     history["last_alerted"] = True
             else:
                 history["last_alerted"] = False
                 
         # Cleanup dead processes
-        dead_pids = set(self.process_history.keys()) - current_pids
+        dead_pids = set(history_dict.keys()) - current_pids
         for pid in dead_pids:
-            del self.process_history[pid]
+            del history_dict[pid]
             
         return events

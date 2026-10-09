@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useMonitoringData } from '../hooks/useMonitoringData';
-import { Activity, Cpu, HardDrive, Network, AlertTriangle, Search, X, Activity as ActivityIcon } from 'lucide-react';
+import { Activity, Cpu, HardDrive, Network, AlertTriangle, Search, X, Activity as ActivityIcon, ShieldAlert } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import DetectionLab from '../components/DetectionLab';
 
 const formatBytes = (bytes) => {
     if (bytes === 0 || bytes === undefined || isNaN(bytes)) return '0 B';
@@ -22,7 +23,10 @@ const ProcessModal = ({ process, onClose, threat }) => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                     <div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Name</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 500 }}>{process.name}</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 500 }}>
+                            {process.name}
+                            {process.is_simulated && <span className="badge" style={{marginLeft: '0.5rem', fontSize: '0.7rem', padding: '0.1rem 0.3rem', backgroundColor: 'var(--warning)', color: '#000', verticalAlign: 'middle'}}>TEST</span>}
+                        </div>
                     </div>
                     <div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>PID</div>
@@ -71,7 +75,7 @@ const ProcessModal = ({ process, onClose, threat }) => {
 
 const Dashboard = () => {
     const { systemStats, processes, threats, loading, error, lastUpdated } = useMonitoringData(2000);
-    const [view, setView] = useState('overview'); // overview, processes, threats, network
+    const [view, setView] = useState('overview'); // overview, processes, threats, network, lab
     const [history, setHistory] = useState([]);
     
     // Process Table State
@@ -194,6 +198,9 @@ const Dashboard = () => {
                 <button className={`nav-btn ${view === 'processes' ? 'active' : ''}`} onClick={() => setView('processes')}>Processes ({processes.length})</button>
                 <button className={`nav-btn ${view === 'threats' ? 'active' : ''}`} onClick={() => setView('threats')}>Threats ({threats.length})</button>
                 <button className={`nav-btn ${view === 'network' ? 'active' : ''}`} onClick={() => setView('network')}>Network</button>
+                <button className={`nav-btn ${view === 'lab' ? 'active' : ''}`} onClick={() => setView('lab')} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)' }}>
+                    <ShieldAlert size={16} /> Detection Lab
+                </button>
             </div>
 
             {view === 'overview' && (
@@ -282,7 +289,10 @@ const Dashboard = () => {
                                     <tbody>
                                         {threats.slice(0, 5).map((threat, idx) => (
                                             <tr key={`${threat.pid}-${idx}`} onClick={() => setSelectedProcess(processes.find(p => p.pid === threat.pid) || {name: threat.name, pid: threat.pid})} style={{ cursor: 'pointer' }}>
-                                                <td style={{ fontWeight: 500 }}>{threat.name}</td>
+                                                <td style={{ fontWeight: 500 }}>
+                                                    {threat.name}
+                                                    {threat.is_simulated && <span className="badge" style={{marginLeft: '0.5rem', fontSize: '0.7rem', padding: '0.1rem 0.3rem', backgroundColor: 'var(--warning)', color: '#000'}}>TEST</span>}
+                                                </td>
                                                 <td style={{ color: 'var(--text-secondary)' }}>{threat.pid}</td>
                                                 <td>{threat.score}/100</td>
                                                 <td>
@@ -343,7 +353,10 @@ const Dashboard = () => {
                             <tbody>
                                 {sortedAndFilteredProcesses.slice(0, 100).map(proc => (
                                     <tr key={proc.pid} onClick={() => setSelectedProcess(proc)} style={{ cursor: 'pointer' }}>
-                                        <td style={{ fontWeight: 500 }}>{proc.name}</td>
+                                        <td style={{ fontWeight: 500 }}>
+                                            {proc.name}
+                                            {proc.is_simulated && <span className="badge" style={{marginLeft: '0.5rem', fontSize: '0.7rem', padding: '0.1rem 0.3rem', backgroundColor: 'var(--warning)', color: '#000'}}>TEST</span>}
+                                        </td>
                                         <td style={{ color: 'var(--text-secondary)' }}>{proc.pid}</td>
                                         <td>{proc.cpu_percent?.toFixed(2) || '0.00'}%</td>
                                         <td>{proc.memory_percent?.toFixed(2) || '0.00'}%</td>
@@ -420,9 +433,12 @@ const Dashboard = () => {
                                 </thead>
                                 <tbody>
                                     {filteredThreats.map((threat, idx) => (
-                                        <tr key={`${threat.pid}-${idx}`} onClick={() => setSelectedProcess(processes.find(p => p.pid === threat.pid) || {name: threat.name, pid: threat.pid})} style={{ cursor: 'pointer' }}>
+                                        <tr key={`${threat.pid}-${idx}`} onClick={() => setSelectedProcess(processes.find(p => p.pid === threat.pid) || {name: threat.name, pid: threat.pid, is_simulated: threat.is_simulated})} style={{ cursor: 'pointer' }}>
                                             <td style={{ color: 'var(--text-secondary)' }}>{threat.timestamp ? new Date(threat.timestamp * 1000).toLocaleTimeString() : 'N/A'}</td>
-                                            <td style={{ fontWeight: 500 }}>{threat.name}</td>
+                                            <td style={{ fontWeight: 500 }}>
+                                                {threat.name}
+                                                {threat.is_simulated && <span className="badge" style={{marginLeft: '0.5rem', fontSize: '0.7rem', padding: '0.1rem 0.3rem', backgroundColor: 'var(--warning)', color: '#000'}}>TEST</span>}
+                                            </td>
                                             <td style={{ color: 'var(--text-secondary)' }}>{threat.pid}</td>
                                             <td>{threat.score}/100</td>
                                             <td>
@@ -457,6 +473,10 @@ const Dashboard = () => {
                         <p style={{ color: 'var(--text-secondary)' }}>Active Connections Monitoring is planned for Phase 3.</p>
                     </div>
                 </>
+            )}
+
+            {view === 'lab' && (
+                <DetectionLab />
             )}
 
             {selectedProcess && (
