@@ -1,19 +1,25 @@
+import threading
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 from monitor.system_monitor import SystemMonitor
 from monitor.process_monitor import ProcessMonitor
+from monitor.network_monitor import NetworkMonitor
 from detection.process_detector import ProcessDetector
+from detection.network_detector import NetworkDetector
 
 app = Flask(__name__)
 CORS(app) # Allow frontend to access
 
 recent_events = []
 simulation_events = []
+events_lock = threading.Lock()
 
 sys_monitor = SystemMonitor()
+network_monitor = NetworkMonitor(detector=NetworkDetector(), events_buffer=recent_events, events_lock=events_lock)
 detector = ProcessDetector(cpu_threshold=90.0, mem_threshold=80.0, required_samples=3)
 # Inject detector and event buffer into ProcessMonitor so it can run detection in the background
-proc_monitor = ProcessMonitor(detector=detector, events_buffer=recent_events)
+proc_monitor = ProcessMonitor(detector=detector, events_buffer=recent_events, events_lock=events_lock)
 
 @app.route('/api/system', methods=['GET'])
 def get_system():
@@ -25,9 +31,15 @@ def get_processes():
     processes = proc_monitor.get_processes()
     return jsonify(processes)
 
+@app.route('/api/connections', methods=['GET'])
+def get_connections():
+    return jsonify(network_monitor.get_connections())
+
 @app.route('/api/threats', methods=['GET'])
 def get_threats():
-    return jsonify(recent_events)
+    with events_lock:
+        events = list(recent_events)
+    return jsonify(events)
 
 @app.route('/api/simulation/run', methods=['POST'])
 def run_simulation():
@@ -71,7 +83,8 @@ def run_simulation():
     # Remove the simulated process entirely to clean up
     proc_monitor.remove_injected_process(pid)
     
-    triggered_events = [e for e in recent_events if e["pid"] == pid]
+    with events_lock:
+        triggered_events = [e for e in recent_events if e["pid"] == pid]
     
     result = {
         "test_id": test_id,

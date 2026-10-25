@@ -3,10 +3,11 @@ import threading
 import time
 
 class ProcessMonitor:
-    def __init__(self, detector=None, events_buffer=None):
+    def __init__(self, detector=None, events_buffer=None, events_lock=None):
         self.cpu_count = psutil.cpu_count() or 1
         self.detector = detector
         self.events_buffer = events_buffer
+        self.events_lock = events_lock or threading.Lock()
         self.processes = []
         self.injected_processes = {}
         self.lock = threading.Lock()
@@ -64,9 +65,10 @@ class ProcessMonitor:
                     for e in new_events:
                         e['timestamp'] = time.time()
                     
-                    self.events_buffer.extend(new_events)
-                    while len(self.events_buffer) > 100:
-                        self.events_buffer.pop(0)
+                    # Both monitors share this lock so their bounded event writes are atomic.
+                    with self.events_lock:
+                        self.events_buffer.extend(new_events)
+                        del self.events_buffer[:-100]
 
             time.sleep(2.0)
 

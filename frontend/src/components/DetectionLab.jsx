@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../services/api';
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Play, CheckCircle, XCircle, Trash2, ShieldAlert } from 'lucide-react';
 
@@ -17,7 +18,7 @@ const DetectionLab = () => {
 
     const fetchResults = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/simulation/results');
+            const res = await fetch(`${API_BASE_URL}/simulation/results`);
             const data = await res.json();
             setResults(data);
         } catch (e) {
@@ -32,7 +33,7 @@ const DetectionLab = () => {
     const runTest = async (testId) => {
         setRunningId(testId);
         try {
-            await fetch('http://localhost:5000/api/simulation/run', {
+            await fetch(`${API_BASE_URL}/simulation/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ test_id: testId })
@@ -55,7 +56,7 @@ const DetectionLab = () => {
 
     const clearResults = async () => {
         try {
-            await fetch('http://localhost:5000/api/simulation/clear', { method: 'POST' });
+            await fetch(`${API_BASE_URL}/simulation/clear`, { method: 'POST' });
             setResults([]);
         } catch (e) {
             console.error('Failed to clear results', e);

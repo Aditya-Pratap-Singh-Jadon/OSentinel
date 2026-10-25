@@ -1,0 +1,6 @@
+.network-connections h2 { font-size: 1.2rem; margin-bottom: 0.75rem; }
+.network-help { color: var(--text-secondary); margin: 0.75rem 0; }
+.network-filters { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0; }
+.network-filters label { display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.9rem; }
+.network-filters input, .network-filters select { padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-tertiary); color: var(--text-primary); }
+.network-connections .table-container { overflow-x: auto; }

@@ -3,6 +3,7 @@ import { useMonitoringData } from '../hooks/useMonitoringData';
 import { Activity, Cpu, HardDrive, Network, AlertTriangle, Search, X, Activity as ActivityIcon, ShieldAlert } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import DetectionLab from '../components/DetectionLab';
+import NetworkConnections from '../components/NetworkConnections';
 
 const formatBytes = (bytes) => {
     if (bytes === 0 || bytes === undefined || isNaN(bytes)) return '0 B';
@@ -16,8 +17,8 @@ const ProcessModal = ({ process, onClose, threat }) => {
     if (!process) return null;
     return (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-            <div className="card" style={{ width: '500px', maxWidth: '90%', position: 'relative' }}>
-                <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X /></button>
+            <div className="card" style={{ width: '500px', maxWidth: '90%', maxHeight: '85vh', overflowY: 'auto', position: 'relative' }}>
+                <button aria-label="Close process details" onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X /></button>
                 <h2 className="title" style={{ marginBottom: '1.5rem', fontSize: '1.4rem' }}>Process Details</h2>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -34,7 +35,7 @@ const ProcessModal = ({ process, onClose, threat }) => {
                     </div>
                     <div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Status</div>
-                        <div style={{ fontSize: '1.1rem', textTransform: 'capitalize' }}>{process.status}</div>
+                        <div style={{ fontSize: '1.1rem', textTransform: 'capitalize' }}>{process.status || 'Unavailable'}</div>
                     </div>
                     <div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>User</div>
@@ -42,11 +43,11 @@ const ProcessModal = ({ process, onClose, threat }) => {
                     </div>
                     <div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>CPU Usage</div>
-                        <div style={{ fontSize: '1.1rem' }}>{process.cpu_percent?.toFixed(2) || '0.00'}%</div>
+                        <div style={{ fontSize: '1.1rem' }}>{process.cpu_percent == null ? 'Unavailable' : `${process.cpu_percent.toFixed(2)}%`}</div>
                     </div>
                     <div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Memory Usage</div>
-                        <div style={{ fontSize: '1.1rem' }}>{process.memory_percent?.toFixed(2) || '0.00'}% ({formatBytes(process.memory_usage)})</div>
+                        <div style={{ fontSize: '1.1rem' }}>{process.memory_percent == null ? 'Unavailable' : `${process.memory_percent.toFixed(2)}% (${formatBytes(process.memory_usage)})`}</div>
                     </div>
                 </div>
 
@@ -66,6 +67,15 @@ const ProcessModal = ({ process, onClose, threat }) => {
                             </div>
                         </div>
                         <div style={{ fontSize: '0.9rem' }}>{threat.description}</div>
+                        {threat.type === 'network_burst' && (
+                            <div style={{ marginTop: '0.75rem' }}>
+                                <p>{threat.connection_count} new TCP connections / {threat.window_seconds}s · Rule threshold: {threat.threshold}</p>
+                                <p>Observed remote endpoints (up to 10):</p>
+                                <ul style={{ paddingLeft: '1.25rem', overflowWrap: 'anywhere' }}>
+                                    {threat.remote_endpoints.map(endpoint => <li key={endpoint}>{endpoint}</li>)}
+                                </ul>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -469,9 +479,7 @@ const Dashboard = () => {
                             <div className="metric-value">{formatBytes(systemStats?.network?.bytes_recv)}</div>
                         </div>
                     </div>
-                    <div className="card" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-                        <p style={{ color: 'var(--text-secondary)' }}>Active Connections Monitoring is planned for Phase 3.</p>
-                    </div>
+                    <NetworkConnections />
                 </>
             )}
 
